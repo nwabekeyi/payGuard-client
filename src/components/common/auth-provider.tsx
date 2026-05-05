@@ -2,11 +2,11 @@ import { useEffect, type ReactNode } from "react";
 import { useAuthStore } from "../../store/auth-store";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-    const { initialize, isLoading } = useAuthStore();
+    const isLoading = useAuthStore((state) => state.isLoading);
 
     useEffect(() => {
-        initialize();
-    }, [initialize]);
+        void useAuthStore.getState().initialize();
+    }, []);
 
     if (isLoading) {
         return (

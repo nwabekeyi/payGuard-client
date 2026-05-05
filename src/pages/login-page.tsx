@@ -11,7 +11,7 @@ export default function LoginPage() {
   const { isAuthenticated, login, error, clearError, isLoading } = useAuthStore();
 
   const location = useLocation();
-  const from = location.state?.from || "/";
+  const from = location.state?.from || "/dashboard";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
