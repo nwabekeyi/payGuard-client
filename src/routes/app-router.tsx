@@ -9,6 +9,7 @@ import AdminDisputePage from "../pages/admin-dispute-page";
 import DisputeTrackingPage from "../pages/dispute-tracking-page";
 import AccountPage from "../pages/account-page";
 import LoginPage from "../pages/login-page";
+import LandingPage from "../pages/landing-page";
 import RegisterPage from "../pages/register-page";
 import KycPage from "../pages/kyc-page";
 import VerifyPaymentPage from "../pages/verify-payment-page";
@@ -16,6 +17,10 @@ import SetupAccountPage from "../pages/setup-account-page";
 import { ProtectedRoute } from "../components/common/protected-route";
 
 export const router = createBrowserRouter([
+    {
+        path: "/",
+        element: <LandingPage />
+    },
     {
         path: "/login",
         element: <LoginPage />
@@ -39,7 +44,7 @@ export const router = createBrowserRouter([
             {
                 element: <AppLayout />,
                 children: [
-                    { index: true, element: <DashboardPage /> },
+                    { path: "dashboard", element: <DashboardPage /> },
                     { path: "escrow/new", element: <CreateEscrowPage /> },
                     { path: "escrow/:id", element: <EscrowWorkspacePage /> },
                     { path: "escrow/:id/dashboard", element: <EscrowDashboardPage /> },
