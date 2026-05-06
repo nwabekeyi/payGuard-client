@@ -3,8 +3,8 @@ import { api } from "./api-client";
 export interface IdentityVerificationRequest {
   kycType: string;
   kycId: string;
-  bankAccountNumber: string;
-  bankCode: string;
+  bankAccountNumber?: string; // Optional for users with existing bank account
+  bankCode?: string; // Optional for users with existing bank account
 }
 
 export interface IdentityVerificationResponse {

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { useAuthStore } from "../store/auth-store";
 import { Button } from "../components/common/button";
@@ -12,12 +12,8 @@ import {
   IconX,
 } from "../components/common/icons";
 import { api } from "../services/api-client";
-import type { UserResponse } from "../types/index";
-
-const BANKS = [
-  { code: "058", name: "GTBank" },
-  { code: "033", name: "UBA" },
-];
+import { bankService } from "../services/bank-service";
+import type { UserResponse, Bank } from "../types/index";
 
 export default function AccountPage() {
   const { user, setUser, logout } = useAuthStore();
@@ -27,6 +23,15 @@ export default function AccountPage() {
   const [bankForm, setBankForm] = useState({ accountNumber: "", bankCode: "", bankName: "" });
   const [bankSaving, setBankSaving] = useState(false);
   const [bankError, setBankError] = useState<string | null>(null);
+  const [banks, setBanks] = useState<Bank[]>([]);
+  const [banksLoading, setBanksLoading] = useState(true);
+
+  useEffect(() => {
+    bankService.getAllBanks()
+      .then(setBanks)
+      .catch(err => console.error("Failed to load banks", err))
+      .finally(() => setBanksLoading(false));
+  }, []);
 
   const handleSignOut = async () => {
     await logout();
@@ -65,7 +70,7 @@ export default function AccountPage() {
     <div className="max-w-3xl space-y-8 animate-fade-in relative z-10 pb-12">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Account Settings</h1>
+        <h1 className="text-3xl font-extrabold tracking-tight text-gray-900 mb-2">Account Settings</h1>
         <p className="text-base font-medium text-gray-500 mt-2">Manage your personal profile, linked payment methods, and security preferences.</p>
       </div>
 
@@ -205,13 +210,14 @@ export default function AccountPage() {
                   <select
                     value={bankForm.bankCode}
                     onChange={(e) => {
-                      const bank = BANKS.find(b => b.code === e.target.value);
+                      const bank = banks.find(b => b.code === e.target.value);
                       setBankForm(f => ({ ...f, bankCode: e.target.value, bankName: bank?.name || "" }));
                     }}
                     className="w-full px-4 py-3 rounded-xl border border-gray-200/80 bg-gray-50/50 text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-primary-500/30 transition-all appearance-none"
+                    disabled={banksLoading}
                   >
-                    <option value="">Select a Nigerian Bank</option>
-                    {BANKS.map(b => (
+                    <option value="">{banksLoading ? "Loading banks..." : "Select a Nigerian Bank"}</option>
+                    {banks.map(b => (
                       <option key={b.code} value={b.code}>{b.name}</option>
                     ))}
                   </select>

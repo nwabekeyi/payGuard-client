@@ -5,6 +5,7 @@ import { IconEye, IconEyeOff, IconShield } from "../components/common/icons";
 import { FcGoogle } from "react-icons/fc";
 import { FaMeta } from "react-icons/fa6";
 import { Button } from "../components/common/button";
+import { APP_NAME } from "../constants";
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -43,7 +44,7 @@ export default function LoginPage() {
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center shadow-sm">
                 <IconShield className="w-4 h-4 text-white" />
               </div>
-              <span className="text-xl font-bold text-gray-900 tracking-tight">Payguard</span>
+               <span className="text-xl font-bold text-gray-900 tracking-tight">{APP_NAME}</span>
             </Link>
             <h1 className="text-3xl lg:text-4xl font-extrabold text-gray-900 tracking-tight leading-tight">
               Welcome back

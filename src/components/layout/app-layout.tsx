@@ -12,6 +12,7 @@ import {
 } from "../common/icons";
 import { DetailPanel, DetailPanelProvider } from "../common/detail-panel";
 import { useAuthStore } from "../../store/auth-store";
+import { APP_NAME } from "../../constants";
 
 function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const location = useLocation();
@@ -49,7 +50,7 @@ function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) 
               <IconShield className="w-4.5 h-4.5 text-white" />
             </div>
             <span className="text-base font-bold text-gray-900 tracking-tight">
-              Escrow
+              {APP_NAME}
             </span>
           </Link>
           <button onClick={onClose} className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 lg:hidden">
@@ -127,7 +128,7 @@ export default function AppLayout() {
              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center shadow-sm">
               <IconShield className="w-4 h-4 text-white" />
             </div>
-            <span className="text-sm font-bold text-gray-900 tracking-tight">Escrow</span>
+            <span className="text-sm font-bold text-gray-900 tracking-tight">{APP_NAME}</span>
           </Link>
           <button 
             onClick={() => setIsMobileMenuOpen(true)}

@@ -53,8 +53,18 @@ interface WizardActions {
     prevStep: () => void;
     setField: <K extends keyof WizardState>(key: K, value: WizardState[K]) => void;
     reset: () => void;
-    setSubmitting: (v: boolean) => void;
-    setError: (e: string | null) => void;
+    setSubmitting: (isSubmitting: boolean) => void;
+    setError: (error: string | null) => void;
+    applyConfigDefaults: (config: {
+        currency?: string;
+        inspectionPeriodDays?: number;
+        autoRelease?: boolean;
+        disputeWindowHours?: number;
+        requireProofOfDelivery?: boolean;
+        milestoneEnabled?: boolean;
+        amountMin?: number;
+        amountMax?: number;
+    }) => void;
 }
 
 const initialState: WizardState = {
@@ -96,5 +106,14 @@ export const useEscrowWizardStore = create<WizardState & WizardActions>(
         reset: () => set(initialState),
         setSubmitting: (isSubmitting) => set({ isSubmitting }),
         setError: (error) => set({ error }),
+        applyConfigDefaults: (config) => set((state) => ({
+            ...state,
+            currency: config.currency ?? state.currency,
+            inspectionPeriodDays: config.inspectionPeriodDays ?? state.inspectionPeriodDays,
+            autoRelease: config.autoRelease ?? state.autoRelease,
+            disputeWindowHours: config.disputeWindowHours ?? state.disputeWindowHours,
+            requireProofOfDelivery: config.requireProofOfDelivery ?? state.requireProofOfDelivery,
+            milestoneEnabled: config.milestoneEnabled ?? state.milestoneEnabled,
+        })),
     }),
 );

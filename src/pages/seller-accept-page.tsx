@@ -161,7 +161,7 @@ export default function SellerAcceptPage() {
         <div className={`mt-8 rounded-[1.5rem] border-2 p-5 ${isBuyer ? "bg-blue-500/10 border-blue-500/20 text-blue-200" : "bg-emerald-500/10 border-emerald-500/20 text-emerald-200"}`}>
             <p className="text-sm font-bold leading-relaxed">
               {isBuyer
-                ? "💡 As the buyer, you will be prompted to securely fund this escrow via Interswitch upon accepting. Funds are held safely until you confirm receipt of the delivery."
+                 ? "💡 As the buyer, you will be prompted to securely fund this escrow via Paystack upon accepting. Funds are held safely until you confirm receipt of the delivery."
                 : "💡 As the seller, you will fulfill the order outlined above. Funds will be released to your linked bank account immediately after the buyer confirms receipt."}
             </p>
         </div>
@@ -189,7 +189,7 @@ export default function SellerAcceptPage() {
       <div className="mt-10 text-center">
         <div className="flex items-center justify-center gap-2 text-xs font-extrabold text-gray-300 uppercase tracking-widest">
           <IconShield className="w-4 h-4 opacity-50" />
-          <span>Secured globally via Interswitch</span>
+           <span>Secured globally via Paystack</span>
         </div>
       </div>
     </div>

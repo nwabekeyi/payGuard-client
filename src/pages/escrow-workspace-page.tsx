@@ -14,7 +14,7 @@ import {
   IconLock,
   IconTrash,
 } from "../components/common/icons";
-import { useInterswitchInline } from "../hooks/use-interswitch-inline";
+import { usePaystackInline } from "../hooks/use-paystack-inline";
 import { DeleteEscrowModal } from "../components/common/delete-escrow-modal";
 import { useAuthStore } from "../store/auth-store";
 import type { EscrowResponse } from "../types/index";
@@ -40,8 +40,7 @@ function BuyerWorkspace({ escrow, userEmail }: { escrow: EscrowResponse; userEma
   const navigate = useNavigate();
   const counterparty = getCounterparty(escrow, userEmail);
 
-  const { initiatePayment, loading: paymentLoading, error: paymentError } = useInterswitchInline(escrow.id, () => {
-    // on success wait a moment and reload the page to see FUNDED status
+  const { initiatePayment, loading: paymentLoading, error: paymentError } = usePaystackInline(escrow.id, () => {
     setTimeout(() => window.location.reload(), 1500);
   });
 

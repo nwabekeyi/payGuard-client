@@ -9,17 +9,38 @@ import AdminDisputePage from "../pages/admin-dispute-page";
 import DisputeTrackingPage from "../pages/dispute-tracking-page";
 import AccountPage from "../pages/account-page";
 import LoginPage from "../pages/login-page";
-import LandingPage from "../pages/landing-page";
 import RegisterPage from "../pages/register-page";
 import KycPage from "../pages/kyc-page";
 import VerifyPaymentPage from "../pages/verify-payment-page";
 import SetupAccountPage from "../pages/setup-account-page";
 import { ProtectedRoute } from "../components/common/protected-route";
+import { useAuthStore } from "../store/auth-store";
+import { useEffect } from "react";
+import { Navigate } from "react-router";
+
+// Root redirect component - handles auth-based routing
+function RootRedirect() {
+    const { isAuthenticated, isLoading, initialize } = useAuthStore();
+
+    useEffect(() => {
+        initialize();
+    }, [initialize]);
+
+    if (isLoading) {
+        return null; // or a loading spinner
+    }
+
+    if (isAuthenticated) {
+        return <Navigate to="/dashboard" replace />;
+    }
+
+    return <Navigate to="/login" replace />;
+}
 
 export const router = createBrowserRouter([
     {
         path: "/",
-        element: <LandingPage />
+        element: <RootRedirect />
     },
     {
         path: "/login",

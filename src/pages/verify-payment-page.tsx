@@ -30,7 +30,7 @@ export default function VerifyPaymentPage() {
                     }
                     const escrowData = JSON.parse(savedData);
 
-                    // We need amount too. Interswitch usually passes it or we get it from payload if we save it.
+                    // We need amount too. Paystack usually passes it or we get it from payload if we save it.
                     const savedAmount = localStorage.getItem("pending_payment_amount");
                     const amount = savedAmount ? parseInt(savedAmount) : escrowData.amount * 100;
 
@@ -38,6 +38,11 @@ export default function VerifyPaymentPage() {
                         method: "POST",
                         body: JSON.stringify({ txnRef, amount, escrowData }),
                     });
+
+                    // Check if result contains an error or failed status
+                    if (result?.error || result?.status === "failed") {
+                        throw new Error(result?.error || result?.message || "Verification failed");
+                    }
 
                     localStorage.removeItem("pending_escrow_data");
                     localStorage.removeItem("pending_payment_amount");
@@ -52,10 +57,15 @@ export default function VerifyPaymentPage() {
                          throw new Error("Payment details missing.");
                     }
                     
-                    await api(`/payments/verify/${id}`, {
+                    const result = await api<any>(`/payments/verify/${id}`, {
                         method: "POST",
                         body: JSON.stringify({ txnRef, amount: parseInt(savedAmount) }),
                     });
+
+                    // Check if result contains an error or failed status
+                    if (result?.error || result?.status === "failed") {
+                        throw new Error(result?.error || result?.message || "Verification failed");
+                    }
 
                     localStorage.removeItem("pending_payment_amount");
                     setStatus("success");

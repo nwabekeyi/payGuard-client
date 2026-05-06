@@ -1,3 +1,13 @@
+export interface Bank {
+  code: string;
+  name: string;
+}
+
+export interface AccountDetail {
+  accountNumber: string;
+  accountName: string;
+}
+
 // ── Escrow Status ──
 export type EscrowStatus =
   | "DRAFT"

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { useEscrowWizardStore } from "../store/escrow-wizard-store";
 import { ESCROW_DEFAULTS } from "../utils/escrow-defaults";
+import { useConfigStore } from "../store/config-store";
 import { Button } from "../components/common/button";
 import {
   IconArrowLeft,
@@ -14,9 +15,10 @@ import {
 } from "../components/common/icons";
 import { formatCurrency } from "../utils/format";
 import type { CreateEscrowRequest } from "../types/index";
-import { useInterswitchInline } from "../hooks/use-interswitch-inline";
+import { usePaystackInline } from "../hooks/use-paystack-inline";
 import { escrowService } from "../services/escrow-service";
 import { useAuthStore } from "../store/auth-store";
+import { APP_NAME } from "../constants";
 
 const STEPS = ["Role", "Counterparty", "Deal", "Delivery", "Review"];
 
@@ -46,15 +48,30 @@ export default function CreateEscrowPage() {
   const navigate = useNavigate();
   const store = useEscrowWizardStore();
   const { user } = useAuthStore();
+  const { config, fetchConfig } = useConfigStore();
   const currentUserEmail = user?.email || "";
   const accent = store.participationMode
     ? accentColors[store.participationMode]
     : accentColors.SELF_AS_BUYER;
 
-  const { initiateNewPayment, loading: paymentLoading } = useInterswitchInline<{ id: string }>(
+  // Fetch config on mount (only once)
+  useEffect(() => {
+    if (!config) {
+      fetchConfig();
+    }
+  }, [config, fetchConfig]);
+
+  // Apply config defaults when config loads - MUST have backend config before proceeding
+  useEffect(() => {
+    if (config) {
+      store.applyConfigDefaults(config);
+    }
+  }, [config]);
+
+  const { initiateNewPayment, loading: paymentLoading, error: paymentError } = usePaystackInline<{ id: string }>(
     undefined,
     (result) => {
-      if (result?.id) {
+      if (result && typeof result === 'object' && 'id' in result && result.id) {
         navigate(`/escrow/${result.id}/dashboard`);
       }
     }
@@ -100,6 +117,21 @@ export default function CreateEscrowPage() {
     );
   }
 
+  // Wait for backend config to load before rendering escrow creation form
+  if (!config) {
+    return (
+      <div className="max-w-md mx-auto py-20 text-center px-6">
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary-50 mb-6 font-bold text-primary-500">
+          <IconSettings className="w-8 h-8 animate-spin" />
+        </div>
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">Loading Configuration</h1>
+        <p className="text-gray-500 mb-8">
+          Fetching latest escrow parameters from server...
+        </p>
+      </div>
+    );
+  }
+
   function canAdvance(): boolean {
     switch (store.step) {
       case 0:
@@ -115,13 +147,13 @@ export default function CreateEscrowPage() {
           );
         }
         return store.counterpartyEmail.includes("@") && store.counterpartyEmail !== currentUserEmail;
-      case 2:
-        return (
-          store.title.trim().length > 0 &&
-          store.description.trim().length > 0 &&
-          Number(store.amount) >= ESCROW_DEFAULTS.AMOUNT_MIN &&
-          Number(store.amount) <= ESCROW_DEFAULTS.AMOUNT_MAX
-        );
+       case 2:
+         return (
+           store.title.trim().length > 0 &&
+           store.description.trim().length > 0 &&
+           Number(store.amount) >= (config?.amountMin ?? ESCROW_DEFAULTS.AMOUNT_MIN) &&
+           Number(store.amount) <= (config?.amountMax ?? ESCROW_DEFAULTS.AMOUNT_MAX)
+         );
       case 3:
         return store.deliveryType !== null;
       case 4:
@@ -166,7 +198,7 @@ export default function CreateEscrowPage() {
 
     try {
       if (store.participationMode === "SELF_AS_BUYER") {
-        await initiateNewPayment(request);
+        initiateNewPayment(request);
       } else {
         store.setField("isSubmitting", true);
         const result = await escrowService.createEscrow(request);
@@ -246,36 +278,44 @@ export default function CreateEscrowPage() {
              </div>
           </div>
 
-          {/* ── Navigation ── */}
-          <div className="flex items-center justify-between">
-            <Button
-              variant="ghost"
-              className="text-gray-500 hover:text-gray-900 bg-white hover:bg-gray-50 border border-gray-200 shadow-sm px-6 py-3 rounded-xl"
-              onClick={() => store.step > 0 ? store.prevStep() : navigate("/")}
-            >
-              {store.step > 0 ? "Back" : "Cancel Creation"}
-            </Button>
-            {store.step < 4 ? (
-              <Button
-                disabled={!canAdvance()}
-                onClick={() => store.nextStep()}
-                icon={<IconChevronRight className="w-4 h-4" />}
-                className="px-8 py-3 rounded-xl shadow-md text-base"
-              >
-                Continue to Next Step
-              </Button>
-            ) : (
-              <Button
-                disabled={!canAdvance() || store.isSubmitting || paymentLoading}
-                onClick={handleSubmit}
-                icon={<IconLock className="w-5 h-5" />}
-                className="px-10 py-3 rounded-xl shadow-lg shadow-primary-500/20 text-base"
-              >
-                {store.isSubmitting ? "Creating transaction securely…" : paymentLoading ? "Initializing Checkout…" : 
-                  store.participationMode === "SELF_AS_BUYER" ? "Create & Pay Securely" : "Create Escrow & Invite"}
-              </Button>
-            )}
-          </div>
+           {/* ── Navigation ── */}
+           <div className="flex items-center justify-between">
+             <Button
+               variant="ghost"
+               className="text-gray-500 hover:text-gray-900 bg-white hover:bg-gray-50 border border-gray-200 shadow-sm px-6 py-3 rounded-xl"
+               onClick={() => store.step > 0 ? store.prevStep() : navigate("/")}
+             >
+               {store.step > 0 ? "Back" : "Cancel Creation"}
+             </Button>
+             {store.step < 4 ? (
+               <Button
+                 disabled={!canAdvance()}
+                 onClick={() => store.nextStep()}
+                 icon={<IconChevronRight className="w-4 h-4" />}
+                 className="px-8 py-3 rounded-xl shadow-md text-base"
+               >
+                 Continue to Next Step
+               </Button>
+             ) : (
+               <Button
+                 disabled={!canAdvance() || store.isSubmitting || paymentLoading}
+                 onClick={handleSubmit}
+                 icon={<IconLock className="w-5 h-5" />}
+                 className="px-10 py-3 rounded-xl shadow-lg shadow-primary-500/20 text-base"
+               >
+                 {store.isSubmitting ? "Creating transaction securely…" : paymentLoading ? "Initializing Checkout…" : 
+                   store.participationMode === "SELF_AS_BUYER" ? "Create & Pay Securely" : "Create Escrow & Invite"}
+               </Button>
+             )}
+           </div>
+
+           {/* Payment error display */}
+           {paymentError && (
+             <div className="mt-4 px-5 py-4 bg-red-50 border border-red-100 rounded-2xl text-sm font-bold text-red-700 flex items-start gap-3">
+               <span className="text-xl leading-none">⚠</span> 
+               <span className="leading-tight">{paymentError}</span>
+             </div>
+           )}
         </div>
 
         {/* Right — Live Preview */}
@@ -564,9 +604,9 @@ function StepCounterparty() {
                placeholder="e.g John Doe"
                className={inputClass}
             />
-            <p className="text-sm font-medium text-gray-500 mt-2 px-1">
-               If they don't have an Outlinr Escrow account yet, they'll be invited to quickly create one.
-            </p>
+             <p className="text-sm font-medium text-gray-500 mt-2 px-1">
+                If they don't have a {APP_NAME} Escrow account yet, they'll be invited to quickly create one.
+             </p>
          </div>
       </div>
 
@@ -583,6 +623,7 @@ function StepCounterparty() {
 
 function StepDeal() {
   const store = useEscrowWizardStore();
+  const { config } = useConfigStore();
   const [advancedOpen, setAdvancedOpen] = useState(false);
 
   const inputClass =
@@ -648,46 +689,45 @@ function StepDeal() {
                {displayAmount}
                </p>
             )}
-            {Number(store.amount) > 0 && Number(store.amount) < ESCROW_DEFAULTS.AMOUNT_MIN && (
-               <p className="text-xs font-bold text-red-500 mt-2 ml-1">
-               Minimum amount is {formatCurrency(ESCROW_DEFAULTS.AMOUNT_MIN, store.currency)}
-               </p>
-            )}
-            {Number(store.amount) > ESCROW_DEFAULTS.AMOUNT_MAX && (
-               <p className="text-xs font-bold text-red-500 mt-2 ml-1">
-               Maximum amount is {formatCurrency(ESCROW_DEFAULTS.AMOUNT_MAX, store.currency)}
-               </p>
-            )}
-            {Number(store.amount) >= ESCROW_DEFAULTS.AMOUNT_MIN && Number(store.amount) <= ESCROW_DEFAULTS.AMOUNT_MAX && (
-               <div className="mt-4 p-5 rounded-[1.5rem] bg-white border border-gray-100 space-y-3 shadow-sm">
-               <div className="flex justify-between text-sm font-medium">
-                  <span className="text-gray-500">Escrow fee ({ESCROW_DEFAULTS.FEE_PERCENT}%)</span>
-                  <span className="text-gray-600">{formatCurrency(Number(store.amount) * ESCROW_DEFAULTS.FEE_PERCENT / 100, store.currency)}</span>
-               </div>
-               <div className="flex justify-between text-base font-bold pt-3 border-t border-gray-100">
-                  <span className="text-gray-900">Total due from buyer</span>
-                  <span className="text-primary-600">{formatCurrency(Number(store.amount) * (1 + ESCROW_DEFAULTS.FEE_PERCENT / 100), store.currency)}</span>
-               </div>
-               </div>
-            )}
+             {Number(store.amount) > 0 && Number(store.amount) < config!.amountMin && (
+                <p className="text-xs font-bold text-red-500 mt-2 ml-1">
+                Minimum amount is {formatCurrency(config!.amountMin, store.currency)}
+                </p>
+             )}
+             {Number(store.amount) > config!.amountMax && (
+                <p className="text-xs font-bold text-red-500 mt-2 ml-1">
+                Maximum amount is {formatCurrency(config!.amountMax, store.currency)}
+                </p>
+             )}
+             {Number(store.amount) >= config!.amountMin && Number(store.amount) <= config!.amountMax && (
+                <div className="mt-4 p-5 rounded-[1.5rem] bg-white border border-gray-100 space-y-3 shadow-sm">
+                <div className="flex justify-between text-sm font-medium">
+                   <span className="text-gray-500">Escrow fee ({config!.feePercent}%)</span>
+                   <span className="text-gray-600">{formatCurrency(Number(store.amount) * config!.feePercent / 100, store.currency)}</span>
+                </div>
+                <div className="flex justify-between text-base font-bold pt-3 border-t border-gray-100">
+                   <span className="text-gray-900">Total due from buyer</span>
+                   <span className="text-primary-600">{formatCurrency(Number(store.amount) * (1 + config!.feePercent / 100), store.currency)}</span>
+                </div>
+                </div>
+             )}
          </div>
 
-         <div className="space-y-2">
-            <label className="block text-sm font-bold text-gray-700">Currency</label>
-            <div className="relative">
-               <select
-               value={store.currency}
-               onChange={(e) => store.setField("currency", e.target.value)}
-               className={`${inputClass} pr-10 appearance-none bg-white border-gray-200 focus:ring-4 cursor-pointer`}
-               >
-               <option value="NGN">NGN — Nigerian Naira</option>
-               <option value="USD">USD — US Dollar</option>
-               <option value="GBP">GBP — British Pound</option>
-               <option value="EUR">EUR — Euro</option>
-               </select>
-               <IconChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
-            </div>
-         </div>
+          <div className="space-y-2">
+             <label className="block text-sm font-bold text-gray-700">Currency</label>
+             <div className="relative">
+                <select
+                value={store.currency}
+                onChange={(e) => store.setField("currency", e.target.value)}
+                className={`${inputClass} pr-10 appearance-none bg-white border-gray-200 focus:ring-4 cursor-pointer`}
+                >
+                 {(config!.currencies || []).map((curr:string) => (
+                  <option key={curr} value={curr}>{curr}</option>
+                ))}
+                </select>
+                <IconChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+             </div>
+          </div>
       </div>
 
       {/* Advanced Settings Accordion */}
@@ -976,6 +1016,7 @@ function ReviewLine({
 
 function StepReview() {
   const store = useEscrowWizardStore();
+  const { config } = useConfigStore();
 
   const amount = Number(store.amount) || 0;
 
@@ -1005,11 +1046,11 @@ function StepReview() {
       <div className="rounded-[1.5rem] border-2 border-gray-100 bg-white shadow-sm divide-y-2 divide-gray-50 overflow-hidden">
         <ReviewLine setStep={store.setStep} label="Title" value={store.title} step={2} />
         <ReviewLine setStep={store.setStep} label="Amount" value={formatCurrency(amount, store.currency)} step={2} />
-        <ReviewLine setStep={store.setStep} label={`Escrow fee (${ESCROW_DEFAULTS.FEE_PERCENT}%)`} value={formatCurrency(amount * ESCROW_DEFAULTS.FEE_PERCENT / 100, store.currency)} step={2} />
-        <div className="flex justify-between items-center px-5 py-4 bg-gray-50/50">
-          <span className="text-sm font-extrabold text-gray-700 uppercase tracking-widest">Total due from buyer</span>
-          <span className="text-base font-extrabold text-primary-600 tracking-tight">{formatCurrency(amount * (1 + ESCROW_DEFAULTS.FEE_PERCENT / 100), store.currency)}</span>
-        </div>
+         <ReviewLine setStep={store.setStep} label={`Escrow fee (${config!.feePercent}%)`} value={formatCurrency(amount * config!.feePercent / 100, store.currency)} step={2} />
+         <div className="flex justify-between items-center px-5 py-4 bg-gray-50/50">
+           <span className="text-sm font-extrabold text-gray-700 uppercase tracking-widest">Total due from buyer</span>
+           <span className="text-base font-extrabold text-primary-600 tracking-tight">{formatCurrency(amount * (1 + config!.feePercent / 100), store.currency)}</span>
+         </div>
         <ReviewLine setStep={store.setStep} label="Currency" value={store.currency} step={2} />
         <ReviewLine setStep={store.setStep} label="Your role" value={store.participationMode ? roleLabels[store.participationMode] : "—"} step={0} />
         {store.participationMode === "AGENT" ? (
@@ -1056,7 +1097,7 @@ function StepReview() {
           <div>
             <p className="text-sm font-bold text-blue-900">Buyer will fund this escrow</p>
             <p className="text-xs font-medium text-blue-800/80 mt-1 leading-relaxed">
-              Once created, the buyer receives an email invitation to review the terms and securely fund the escrow vault via Interswitch.
+               Once created, the buyer receives an email invitation to review the terms and securely fund the escrow vault via Paystack.
             </p>
           </div>
         </div>
@@ -1071,6 +1112,7 @@ function StepReview() {
 
 function LivePreview() {
   const store = useEscrowWizardStore();
+  const { config } = useConfigStore();
   const amount = Number(store.amount) || 0;
 
   const roleMap: Record<string, string> = {
@@ -1133,20 +1175,20 @@ function LivePreview() {
         </div>
 
         {amount > 0 && (
-          <div className="p-4 rounded-[1.5rem] bg-gray-800/50 border border-gray-700/50 space-y-2 mt-4">
-            <div className="flex justify-between">
-               <span className="text-xs font-bold text-gray-400">Escrow fee ({ESCROW_DEFAULTS.FEE_PERCENT}%)</span>
-               <span className="text-xs font-bold text-gray-300">
-                  +{formatCurrency(amount * ESCROW_DEFAULTS.FEE_PERCENT / 100, store.currency)}
-               </span>
-            </div>
-            <div className="flex justify-between pt-2 border-t border-gray-700/50">
-               <span className="text-sm font-bold text-white">Total</span>
-               <span className="text-sm font-extrabold text-[#38D9BA] tracking-tight">
-                  {formatCurrency(amount * (1 + ESCROW_DEFAULTS.FEE_PERCENT / 100), store.currency)}
-               </span>
-            </div>
-          </div>
+           <div className="p-4 rounded-[1.5rem] bg-gray-800/50 border border-gray-700/50 space-y-2 mt-4">
+              <div className="flex justify-between">
+                 <span className="text-xs font-bold text-gray-400">Escrow fee ({config!.feePercent}%)</span>
+                 <span className="text-xs font-bold text-gray-300">
+                    +{formatCurrency(amount * config!.feePercent / 100, store.currency)}
+                 </span>
+              </div>
+              <div className="flex justify-between pt-2 border-t border-gray-700/50">
+                 <span className="text-sm font-bold text-white">Total</span>
+                 <span className="text-sm font-extrabold text-[#38D9BA] tracking-tight">
+                    {formatCurrency(amount * (1 + config!.feePercent / 100), store.currency)}
+                 </span>
+              </div>
+           </div>
         )}
         
         <div className="pt-4 border-t border-gray-800">

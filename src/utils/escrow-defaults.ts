@@ -8,5 +8,5 @@ export const ESCROW_DEFAULTS = {
     MILESTONE_ENABLED: false,
     AMOUNT_MIN: 100,
     AMOUNT_MAX: 20_000_000,
-    FEE_PERCENT: 1.5,
+    FEE_PERCENT: 5,
 } as const;
